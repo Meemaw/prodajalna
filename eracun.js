@@ -47,7 +47,7 @@ function davcnaStopnja(izvajalec, zanr) {
 
 // Prikaz seznama pesmi na strani
 streznik.get('/', function(zahteva, odgovor) {
-  if(zahteva.session.trenutna == null) {
+  if(zahteva.session.trenutnaID == null) {
     odgovor.redirect("/prijava");
   } else {
     pb.all("SELECT Track.TrackId AS id, Track.Name AS pesem, \
@@ -150,6 +150,16 @@ var strankaIzRacuna = function(racunId, callback) {
     })
 }
 
+//
+var getStranka = function(strankaID, callback) {
+  pb.all("SELECT * FROM Customer \
+            WHERE CustomerId = " + strankaID, 
+      function(napaka, vrstice) {
+        callback(napaka, vrstice[0]);
+      });
+            
+}
+
 // Izpis računa v HTML predstavitvi na podlagi podatkov iz baze
 streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
   // Kliknili smo na izbira računa
@@ -181,10 +191,12 @@ streznik.get('/izpisiRacun/:oblika', function(zahteva, odgovor) {
         zato računa ni mogoče pripraviti!</p>");
     } else {
       odgovor.setHeader('content-type', 'text/xml');
-      odgovor.render('eslog', {
-        vizualiziraj: zahteva.params.oblika == 'html' ? true : false,
-        postavkeRacuna: pesmi
-      })  
+      getStranka(zahteva.session.trenutnaID, function(napaka, stranka) {
+        odgovor.render('eslog', {
+          vizualiziraj: zahteva.params.oblika == 'html' ? true : false, 
+          strankaTrenutna: stranka, postavkeRacuna: pesmi
+        }) 
+      });
     }
   })
 })
@@ -263,14 +275,15 @@ streznik.post('/stranka', function(zahteva, odgovor) {
   var form = new formidable.IncomingForm();
   
   form.parse(zahteva, function (napaka1, polja, datoteke) {
-    zahteva.session.trenutna = polja.FirstName + " " + polja.LastName;
+    zahteva.session.trenutnaID = polja.seznamStrank;
     odgovor.redirect('/')
   });
 })
 
 // Odjava stranke
 streznik.post('/odjava', function(zahteva, odgovor) {
-    zahteva.session.trenutna = null;
+    zahteva.session.trenutnaID = null;
+    zahteva.session.kosarica = [];
     odgovor.redirect('/prijava') 
 })
 
